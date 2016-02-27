@@ -4,15 +4,25 @@
 
 #### *TODO*
 - *describe the primatives*
-- *ConnectToMe*
-
-
-### Abstract
+- *ConnectToMe* <-- nolonger exists
 
 This document describes the CryptoAuth layer of the FC stack that provides
 confidentiality and authentication between network nodes, known as CryptoAuth.
 It contains a description of CryptoAuth headers and the session handshake protocol.
 
+- Introduction
+- Handshake
+- Header layout
+- Header fields
+- Handshake states
+  - Hello
+  - Key
+- Data
+
+- Introduction
+- State flow
+- Handshake
+-
 
 ## Introduction
 
@@ -117,7 +127,7 @@ The handshake header contains the following fields:
 - Permanent node public key
  - Permanent node key, identifies node and is used to derive FC00::/8 address.
 - Message authentication code
- - MAC for key payload.
+ - MAC for key payload - Poly1305 Authenticator.
 - Encrypted handshake public key
  - Handshake public keys exchanged between nodes to generate session symmetric key.
 
@@ -125,6 +135,8 @@ The handshake header contains the following fields:
 ### Handshake states
 
 #### Hello
+
+bzzzzzt this is the authenticator and the hello packet relates to the entire packet header
 
 The node initiating the session first generates the authentication
 challenge field from the peering password previously transmitted
@@ -146,6 +158,8 @@ Layout of this field:
 **Auth Type** indicates the how **Hash Code** is generated, and is currently
 only set to 0x01 to indicate a password digest.
 
+0x02 -> hash code is digest of username and password digest is used in session setup
+
 **Hash Code** is the second through eighth byte of the SHA256 digest of
 the peering password.
 
@@ -153,6 +167,8 @@ the peering password.
 a third node by creating a derived credential from the password for the
 first node. This is not documented here and in the common case this field
 and the remaining bytes of the header are set to zero.
+
+--- this is the end of the part about the authenticator
 
 A random 24 byte number is placed in the **random nonce** field, to be
 used during encryption and decryption of the payload.
@@ -166,7 +182,7 @@ Next a temporary key is generated to protect the handshake payload. The
 of the local node and the permanent public key of the remote node. The
 product of the combined keys is concatenated with the SHA256 digest of the
 authentication password, and the SHA256 digest of that concatenation is the
-temporary key.
+temporary key. ONLY FOR AUTHTYPE 1 & 2, FOR 0 THERE IS NO COMBINING
 
 The key to be encrypted by the aformentioned temporary key is the public
 key of a randomly generated assymetric keypair local to this CryptoAuth
@@ -190,13 +206,13 @@ and the **Permanent public key** field is stored for future use.
 
 The **Hash code** subfield of **Authentication challenge** is validated
 against local passwords using the same method of hash code generatation
-described above.
+described above. OR USERNAME IF IT IS AUTHTYPE 2
 
 To decrypt the handshake key payload, the HELLO recipient generates the
-temporary key used by the remote node during encryption using the same
+>>temporary key<< DONT USE TEMPORARY KEY, CALL IT TEMPORARY SHARED SECRET (TEMP curve25519 KEYS ARE ALSO USED) used by the remote node during encryption using the same
 process. The local permanent secret key is combined with the remote
 permanent public key using the **scalarmult_curve25519** primative,
-concatenated with the SHA256 digest of the password, and hashed again with
+concatenated with the SHA256 digest of the password (UNLESS AUTHTYPE 0), and hashed again with
 SHA256 to create the temporary key.
 
 The payload is authenticated and decrypted, and the recipient stores the
@@ -261,7 +277,7 @@ Packets following the handshake have the following header:
  32 |                                                               |
     +~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~+
 
-    
+
 ```
 
 Data headers contain two fields:
