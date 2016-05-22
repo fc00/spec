@@ -1,6 +1,11 @@
 # CryptoAuth
 
-*Protocol version 17*
+**Draft 1**
+
+Authors:
+
+- Emery Hemingway (@ehmry)
+
 
 #### *TODO*
 - *describe the primatives*
@@ -261,7 +266,7 @@ Packets following the handshake have the following header:
  32 |                                                               |
     +~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~+
 
-    
+
 ```
 
 Data headers contain two fields:
