@@ -16,8 +16,8 @@ Please take note of the [conduct](code of conduct).
 
 ### Protocols
 
-- [CryptoAuth draft 1](cryptoauth.md) ([draft 2 discussion](fc00/spec#2))
-- Switch ([draft 1 discussion](fc00/spec#3))
+- [CryptoAuth draft 1](cryptoauth.md) ([draft 2 discussion](https://github.com/fc00/spec/pull/2))
+- Switch ([draft 1 discussion](https://github.com/fc00/spec/pull/3))
   - Packet switching
   - Label operations
   - Label encoding
