@@ -7,42 +7,57 @@ Authors:
 - Emery Hemingway (@ehmry)
 - Lars Gierth (@lgierth)
 
-CryptoAuth encrypts and authenticates network messages and packets.
-It also provides authorization using various challenges.
+CryptoAuth is a packet-oriented encryption and authentication protocol.
+It is tolerant toward packet loss and out-of-order packets,
+and also provides authorization using various challenges.
+
+- [Introduction](#introduction)
+- Protocol changes
+- Dramatization
+- Cryptographic primitives
+- Implementations
+- Handshake
+  - Protocol
+  - Packet layout
+  - Hello, RepeatHello
+  - Key, RepeatKey
+- Data
+  - Protocol
+  - Packet layout
+  - Session state rollover
+- Authorization challenges
+  - Type 0: none
+  - Type 1: password
+  - Type 2: login/password
+
+
+## Introduction
 
 CryptoAuth at its essence defines:
 
 1. A handshake protocol for exchanging session secrets.
 2. The application of well known cryptographic primitives to network data on layers 2 and 3.
 
-In addition, this specification draft describes:
+CryptoAuth makes a few assumptions:
 
-- Authorization challenges like password, and login+password.
-- Layout of encrypted messages on the wire.
-- Replay / out-of-order protection.
+- The underlying network transport is unreliable
+  and might lose any number of packets, or transmit packets in the wrong order.
+- The remote participant's Permanent Public Key has been acquired out-of-band.
 
-- [Introduction](#introduction)
-- Cryptographic primitives
-- Packet layout
-  - Handshake packets
-  - Data packets
-- Handshake packets
-  - Handshake states
-    - Hello, RepeatHello
-    - Key, RepeatKey
-- Handshake protocol
-- Data packets
-  - Header fields
-  - Description
-- Authorization challenges
-  - Type 0: none
-  - Type 1: password
-  - Type 2: login/password
-- Replay protection
+CryptoAuth's mode of operation is simple:
+it takes as input individual network packets, encodes them, then outputs them.
+
+1. Read one network packet and the respective remote public key.
+2. If no matching session in `established` state:
+  - start new session (`new` state) or reuse existing session (other states)
+  - encode as Handshake Packet
+  - write packet
+3. With existing `established` session:
+  - encode as Data Packet
+  - write packet
 
 
-## Introduction
-
+~~
 Before two nodes can exchange encrypted messages, they must perform a handshake,
 by agreeing on a temporary shared secret and establishing a CryptoAuth session.
 Encrypted data may be piggy-backed on handshake packets,
@@ -52,6 +67,18 @@ The node which sends the first packet is the initiating party.
 
 A handshake packet or data packet MUST start with a session state field,
 which determines the state of the handshake, or the recipient's identifier for the session.
+~~
+
+## Protocol changes
+
+TODO: fixed choice of primitives, increment cryptoauth version by 1 if need for change
+TODO: explain how to distinguish between v1/v2/v3 packets
+
+
+## Dramatization
+
+- **Alice:** TODO
+- **Bob:** TODO
 
 
 ## Cryptographic primitives
@@ -61,13 +88,33 @@ which determines the state of the handshake, or the recipient's identifier for t
 - Stream cipher: salsa20
 
 TODO: remote's public key (and auth challenge) needs to be grabbed out-of-band
-TODO: fixed choice of primitives, increment cryptoauth version by 1 if need for change
 TODO: write a bit more about why these were chosen, their characteristics, etc.
+TODO: rollover of session state field
 
 
-## Packet layout
+## Implementations
 
-### Handshake packets
+TODO: should provide a sessionmanager
+TODO: should wrap packet-oriented io, e.g. golang's net.PacketConn
+
+
+## Handshake
+
+### Protocol
+
+The CryptoAuth handshake is the method by which two nodes perform mutual
+authentication and ephemeral key generation. A CryptoAuth header signifies
+a handshake whenever the Session State field contains one of the following
+values.
+
+- 0x00000000 - Hello
+- 0x00000001 - RepeatHello
+- 0x00000002 - Key
+- 0x00000003 - RepeatKey
+
+TODO: should it be "RepeatedHello" instead of "RepeatHello"?
+
+### Packet layout
 
 ```
                      1               2               3
@@ -120,43 +167,6 @@ TODO: write a bit more about why these were chosen, their characteristics, etc.
 - Sender's encrypted temporary public key: Handshake public keys exchanged between nodes to generate session symmetric key.
 - Variable-length encrypted data: data being piggy-backed on handshake packet.
 
-### Data packets
-
-```
-                     1               2               3
-     0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  0 |                   Session State (int32 >= 4)                  |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  4 |                                                               |
-  8 |                  Message authentication code                  |
- 16 |                                                               |
- 20 |                                                               |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- 24 |                Variable-length encrypted data                 |
-... |
-```
-
-- Session state: an incrementing session counter in big endian.
-- Message authentication code: authenticates packet payload.
-- Variable-length encrypted data: zero or more bytes of data.
-
-
-## Handshake packets
-
-The CryptoAuth handshake is the method by which two nodes perform mutual
-authentication and ephemeral key generation. A CryptoAuth header signifies
-a handshake whenever the Session State field contains one of the following
-values.
-
-- 0x00000000 - Hello
-- 0x00000001 - RepeatHello
-- 0x00000002 - Key
-- 0x00000003 - RepeatKey
-
-TODO: should it be "RepeatedHello" instead of "RepeatHello"?
-
-
 ### Hello, RepeatHello
 
 A random 24 byte number is placed in the **random nonce** field, to be
@@ -207,7 +217,6 @@ SHA256 to create the temporary key.
 The payload is authenticated and decrypted, and the recipient stores the
 remote handshake key for a KEY response packet.
 
-
 ### Key, RepeatKey
 
 The transmitting node zeros out the **Authentication challenge**,
@@ -241,7 +250,9 @@ combining the remote public handshake key with the local secret handshake
 key. The handshake is now complete.
 
 
-## Data packets
+## Data
+
+### Protocol
 
 Data packets start with the same **Session state** field as the handshake
 header. This field is used as a nonce for authentication and encryption.
@@ -257,6 +268,31 @@ previously mentioned nonce, and the remainder of the packet starting with
 the MAC to the **crypto_box_curve25519xsalsa20poly1305_open_afternm**
 primative. After a packet is decrypted the payload is forwarded to the
 switch.
+
+### Packet layout
+
+```
+                     1               2               3
+     0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  0 |                   Session State (int32 >= 4)                  |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  4 |                                                               |
+  8 |                  Message authentication code                  |
+ 16 |                                                               |
+ 20 |                                                               |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ 24 |                Variable-length encrypted data                 |
+... |
+```
+
+- Session state: an incrementing session counter in big endian.
+- Message authentication code: authenticates packet payload.
+- Variable-length encrypted data: zero or more bytes of data.
+
+### Session state rollover
+
+TODO: specify this
 
 
 ## Authorization challenges
@@ -302,3 +338,6 @@ TODO: specify this
 ### Type 2: login/password
 
 TODO: specify this
+
+
+## Replay / out-of-order protection
