@@ -7,13 +7,19 @@ Authors:
 - Emery Hemingway (@ehmry)
 - Lars Gierth (@lgierth)
 
-CryptoAuth encrypts and authenticates messages/packets between any two participants.
-It can also authorize messages using various challenges.
+CryptoAuth encrypts and authenticates network messages and packets.
+It also provides authorization using various challenges.
 
-CryptoAuth at its essence defines 1) a handshake protocol, and 2) the application
-of well known cryptographic primitives to network data on layers 2 and 3.
+CryptoAuth at its essence defines:
 
-This document describes the packet layout, handshake protocol, and authorization challenges.
+1. A handshake protocol for exchanging session secrets.
+2. The application of well known cryptographic primitives to network data on layers 2 and 3.
+
+In addition, this specification draft describes:
+
+- Authorization challenges like password, and login+password.
+- Layout of encrypted messages on the wire.
+- Replay / out-of-order protection.
 
 - [Introduction](#introduction)
 - Cryptographic primitives
