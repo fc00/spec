@@ -49,30 +49,12 @@ it takes as input individual network packets, encodes them, then outputs them.
 
 1. Read one network packet and the respective remote public key.
 2. If no matching session in `established` state:
-  - start new session (`new` state) or reuse existing session (other states)
-  - encode as Handshake Packet
-  - write packet
+  - start new session (`new` state) or reuse existing session (other states),
+  - encode as Handshake Packet,
+  - write packet,
 3. With existing `established` session:
-  - encode as Data Packet
-  - write packet
-
-
-~~
-Before two nodes can exchange encrypted messages, they must perform a handshake,
-by agreeing on a temporary shared secret and establishing a CryptoAuth session.
-Encrypted data may be piggy-backed on handshake packets,
-although these don't offer Perfect Forward Secrecy.
-
-The node which sends the first packet is the initiating party.
-
-A handshake packet or data packet MUST start with a session state field,
-which determines the state of the handshake, or the recipient's identifier for the session.
-~~
-
-## Protocol changes
-
-TODO: fixed choice of primitives, increment cryptoauth version by 1 if need for change
-TODO: explain how to distinguish between v1/v2/v3 packets
+  - encode as Data Packet,
+  - write packet,
 
 
 ## Dramatization
@@ -83,22 +65,42 @@ TODO: explain how to distinguish between v1/v2/v3 packets
 
 ## Cryptographic primitives
 
-- Key agreement: curve25519
-- HMAC: poly1305
-- Stream cipher: salsa20
+To simplify the protocol and minimize packet size overhead,
+CryptoAuth uses exactly one combination of key exchange, stream cipher, and HMAC.
+With no negotiation needed, a whole class of vulnerabilities disappear.
 
-TODO: remote's public key (and auth challenge) needs to be grabbed out-of-band
-TODO: write a bit more about why these were chosen, their characteristics, etc.
-TODO: rollover of session state field
+- Key exchange: curve25519
+- Stream cipher: salsa20
+- HMAC: poly1305
+
+When an implementation displays a private or public key
+to a user, or to another program,
+it should encode the key as Base32, as used by [dnscurve](dnscurve).
+
+[dnscurve]: https://dnscurve.org/in-implement.html
+
+- TODO: remote's public key (and auth challenge) needs to be grabbed out-of-band
+- TODO: write a bit more about why these were chosen, their characteristics, etc.
+- TODO: rollover of session state field
 
 
 ## Implementations
 
-TODO: should provide a sessionmanager
-TODO: should wrap packet-oriented io, e.g. golang's net.PacketConn
+- TODO: should provide a sessionmanager
+- TODO: should wrap packet-oriented io, e.g. golang's net.PacketConn
 
 
 ## Handshake
+
+~~Before two nodes can exchange encrypted messages, they must perform a handshake,
+by agreeing on a temporary shared secret and establishing a CryptoAuth session.
+Encrypted data may be piggy-backed on handshake packets,
+although these don't offer Perfect Forward Secrecy.~~
+
+~~The node which sends the first packet is the initiating party.~~
+
+~~A handshake packet or data packet MUST start with a session state field,
+which determines the state of the handshake, or the recipient's identifier for the session.~~
 
 ### Protocol
 
@@ -113,6 +115,15 @@ values.
 - 0x00000003 - RepeatKey
 
 TODO: should it be "RepeatedHello" instead of "RepeatHello"?
+
+- HELLO send
+  - nonce: random 24 bytes
+  - sharedSecret: scalarmult_curve25519(senderPrivKey, recvrPubKey) + sha256(authchallenge)
+  - tempPrivKey: random 32 bytes
+  - crypto_box_curve25519xsalsa20xpoly1305(tempPubKey, sharedSecret, nonce)
+- HELLO receive
+  - sharedSecret: scalarmult_curve25519(recvrPrivKey, senderPubKey) + sha256(authchallenge)
+  -
 
 ### Packet layout
 
@@ -341,3 +352,5 @@ TODO: specify this
 
 
 ## Replay / out-of-order protection
+
+TODO
